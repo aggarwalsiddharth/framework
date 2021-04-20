@@ -19,9 +19,15 @@ near_st_dict = {33: ['17','36','38'], 21:['17','36','38']}
 
 stats = {'process': '','ok': False}
 
+# Fill list to send to features for file saving
+fill_list = []
+
 ## GUI calls this function and gives values of arguments
 def fill_values(TEMP_NA,PM_NA,POLL_NA,MET_NA):
 	global stats# Record the status as the process goes
+	global fill_list
+
+	fill_list = [TEMP_NA,PM_NA,POLL_NA,MET_NA]
 
 	# Get df from data_load
 	global df
@@ -954,3 +960,6 @@ def Met_3(df):
 ## sending df to features.py
 def get_df():
 	return df
+
+def get_miss_list():
+	return fill_list

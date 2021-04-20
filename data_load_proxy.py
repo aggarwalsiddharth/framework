@@ -15,11 +15,20 @@ idx = 0
 
 stats = {'process': '','ok': False}
 
+# Station id and Interval to send it to Features for File saving
+station_id = 0
+interval = ''
+
 ## GUI calls this function and gives values of arguments
 def start_load(STATION_ID,INTERVAL):
 	global stats# Record the status as the process goes
 	global df
 	global idx
+	global station_id
+	global interval
+	station_id = STATION_ID
+	interval = INTERVAL
+
 	idx = int(STATION_ID) ## For sending it to Missing Values.py
 
 	## First read the file if it exists else say INVALID STATION
@@ -173,3 +182,18 @@ def changeInterval(df, INTERVAL):
 ## sending df to missing_values.py
 def get_df():
 	return idx, df
+
+## 
+def get_id_int():
+	return station_id,interval
+
+def check_file(STATION_ID,INTERVAL,TEMP_NA,PM_NA,POLL_NA,MET_NA,features_dict):
+	miss_list = [TEMP_NA,PM_NA,POLL_NA,MET_NA]
+	feat_list = list(features_dict.values())
+	file_name = f'station:{STATION_ID}_int:{INTERVAL}_miss:{miss_list}_feat:{feat_list}_.csv'
+	if file_name in os.listdir('./data/saved'):
+		df = pd.read_csv('data/saved/'+file_name)
+		print('File taken saved')
+		return df, True
+	else:
+		return 0, False

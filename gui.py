@@ -1,4 +1,6 @@
 import sys
+import re
+from csv import DictWriter
 from PyQt5.QtWidgets import QWidget, QLabel, QApplication
 from PyQt5 import uic
 from PyQt5.QtWidgets import QApplication
@@ -12,7 +14,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QPushButton, QAc
 from PyQt5.QtWidgets import QCalendarWidget, QFontDialog, QColorDialog, QTextEdit, QFileDialog
 from PyQt5.QtWidgets import QCheckBox, QProgressBar, QComboBox, QLabel, QStyleFactory, QLineEdit, QInputDialog
 
-import data_load_proxy,missing_values,features,metrics
+import data_load_proxy,missing_values,features,model
 
 # screen variable for the screen widget
 screens = ''
@@ -63,10 +65,18 @@ STANDARDIZATION = 0
 
 SPLIT_PERC = 20
 
-model_dict = {'SVR':0,'Decision Tree':1,'Random Forest':2,'XGBoost':3}
+model_dict = {'Linear Regression':0,'Ridge Regression':1,'Lasso Regression':2,
+     'Elastic Net Regression':3,'SGD Regression':4,
+      'Decision Tree':5,'Random Forest':6,'Ada Boost':7,
+     'Bagging':8,'Gradient Boost':9,'XGBoost':10,'Extra Trees':11,'SVR':12,
+     'HistGradientBoosting':13,'LGBMRegressor':14,'CatBoostRegressor':15}
 MODEL = 0
 
 metrics_dict = {'RMSE':1,'R2 score':1,'MAE':1,'MAPE':1}
+
+df = []
+
+result = ''
 
 ## Screen1: Station select and Interval setting
 class Screen1(QWidget):
@@ -234,7 +244,7 @@ class Screen3(QWidget):
         self.met.setGeometry(650,370,400,50)
         met_choice.activated[str].connect(self.met_select)
         
-        btn_ref_file = QPushButton('START PROCESS', self)
+        btn_ref_file = QPushButton('CONTINUE', self)
         btn_ref_file.resize(500, 80)
         btn_ref_file.move(300, 500)
         btn_ref_file.clicked.connect(self.nextScreen)
@@ -274,7 +284,7 @@ class Screen3(QWidget):
         MET_NA = met_na_dict[text]       
 
 
-## This screen is again just for displaying status of Filling Missing values
+## Feature Engineering: What all features are needed in Dataframe
 class Screen4(QWidget):
 
     def __init__(self):
@@ -284,53 +294,6 @@ class Screen4(QWidget):
 
     def initUI(self):
         print('In Screen 4')
-        processMsg = QLabel('<h1>Missing Values Processed</h1>', self)
-        processMsg.setGeometry(400,50,350,100)
-
-        stats = missing_values.fill_values(TEMP_NA,PM_NA,POLL_NA,MET_NA)
-        #stats = {'ok':True, 'process':'Done a lot!'}
-        statsMsg = QLabel(stats['process'],self)
-        statsMsg.setGeometry(400,100,500,500)
-
-
-        if stats['ok'] == True:
-
-            btn_next_screen = QPushButton('Continue', self)
-            btn_next_screen.resize(500, 80)
-            btn_next_screen.move(300, 500)
-            btn_next_screen.clicked.connect(self.nextScreen)
-
-        else: 
-            errMsg = QLabel('<h3>Some error occured. Please try another configuration</h3>',self)
-            errMsg.setGeometry(400,500,500,100)
-
-        btn_back = QPushButton('Back', self)
-        btn_back.resize(80, 50)
-        btn_back.move(50, 20)
-        btn_back.clicked.connect(self.backScreen)
-
-    def backScreen(self):
-
-        screens.setCurrentIndex(screens.currentIndex()-1)
-
-
-
-    def nextScreen(self):
-
-        s5 = Screen5()
-        screens.addWidget(s5)
-        screens.setCurrentIndex(screens.currentIndex()+1)
-
-## Feature Engineering: What all features are needed in Dataframe
-class Screen5(QWidget):
-
-    def __init__(self):
-        super().__init__()
-
-        self.initUI()
-
-    def initUI(self):
-        print('In Screen 5')
         processMsg = QLabel('<h1>Selection 3: Feature Engineering</h1>', self)
         processMsg.setGeometry(350,50,450,100)
 
@@ -519,9 +482,74 @@ class Screen5(QWidget):
 
     def nextScreen(self):
 
+        s5 = Screen5()
+        screens.addWidget(s5)
+        screens.setCurrentIndex(screens.currentIndex()+1)
+
+
+## This screen is again just for displaying status of Filling Missing values
+class Screen5(QWidget):
+
+    def __init__(self):
+        super().__init__()
+
+        self.initUI()
+
+    def initUI(self):
+        print('In Screen 5')
+        processMsg = QLabel('<h1>File Processed</h1>', self)
+        processMsg.setGeometry(400,50,350,100)
+
+        global df
+
+        df, exists = data_load_proxy.check_file(STATION_ID,INTERVAL,TEMP_NA,PM_NA,POLL_NA,MET_NA,features_dict)
+
+        if exists:
+            statsMsg = QLabel('Fetching already available file',self)
+            statsMsg.setGeometry(400,70,500,500)            
+            btn_next_screen = QPushButton('Continue', self)
+            btn_next_screen.resize(500, 80)
+            btn_next_screen.move(300, 500)
+            btn_next_screen.clicked.connect(self.nextScreen)
+        else:
+            stats1 = missing_values.fill_values(TEMP_NA,PM_NA,POLL_NA,MET_NA)
+            #stats = {'ok':True, 'process':'Done a lot!'}
+            statsMsg = QLabel(stats1['process'],self)
+            statsMsg.setGeometry(400,70,500,500)
+
+            df, stats2 = features.get_data(STATION_ID, features_dict)
+            stats2Msg = QLabel(stats2['process'],self)
+            stats2Msg.setGeometry(400,180,500,500)
+
+
+            if stats1['ok'] == True and stats2['ok']==True:
+
+                btn_next_screen = QPushButton('Continue', self)
+                btn_next_screen.resize(500, 80)
+                btn_next_screen.move(300, 500)
+                btn_next_screen.clicked.connect(self.nextScreen)
+
+            else: 
+                errMsg = QLabel('<h3>Some error occured. Please try another configuration</h3>',self)
+                errMsg.setGeometry(400,500,500,100)
+
+        btn_back = QPushButton('Back', self)
+        btn_back.resize(80, 50)
+        btn_back.move(50, 20)
+        btn_back.clicked.connect(self.backScreen)
+
+    def backScreen(self):
+
+        screens.setCurrentIndex(screens.currentIndex()-1)
+
+
+
+    def nextScreen(self):
+
         s6 = Screen6()
         screens.addWidget(s6)
         screens.setCurrentIndex(screens.currentIndex()+1)
+
 
 ## Lag values for Pollutants(if chosen for PARAMS) and for TARGET variable
 class Screen6(QWidget):
@@ -635,13 +663,29 @@ class Screen7(QWidget):
 
         self.model = QLabel('<h2>ML Model</h2>', self)
         model_choice = QComboBox(self)
-        model_choice.addItem('SVR')
-        model_choice.addItem('Decision Tree')
+        model_choice.addItem('Linear Regression')
+        model_choice.addItem('Ridge Regression')
+        model_choice.addItem('Lasso Regression')
+        model_choice.addItem('Elastic Net Regression')
+        model_choice.addItem('SGD Regression')
+        model_choice.addItem("Decision Tree")
         model_choice.addItem('Random Forest')
-        model_choice.addItem("XGBoost")
+        model_choice.addItem("Ada Boost")
+        model_choice.addItem('Bagging')
+        model_choice.addItem('Gradient Boost')
+        model_choice.addItem('XGBoost')
+        model_choice.addItem('Extra Trees')
+        model_choice.addItem('SVR')
+        model_choice.addItem('HistGradientBoosting')
+        model_choice.addItem('LGBMRegressor')
+        model_choice.addItem('CatBoostRegressor')
+        
+        
+        
         model_choice.setGeometry(690,330,200,50)
         self.model.setGeometry(720,300,400,50)
         model_choice.activated[str].connect(self.model_select)
+
 
         metricMsg = QLabel('<i>Metrics:</i>', self)
         metricMsg.setGeometry(120, 400, 200, 20)
@@ -741,25 +785,83 @@ class Screen8(QWidget):
         print('In Screen 8')
         OutMsg = QLabel('<h1>Working on the data...</h1>', self)
         OutMsg.setGeometry(350,50,450,100)
+        global result
 
         ## Until here we have called data_load 
         ## and missing_values
 
         ## Now we start from features
 
-        features.get_data(features_dict,LAG_POLL,TARGET,LAG_TARGET)
+        try:
+            features.final_features(df,features_dict,LAG_POLL,TARGET,LAG_TARGET)
+            stats = model.get_data(SPLIT_PERC,STANDARDIZATION,MODEL)
+            result = stats['result']
+        except Exception as e:
+            print(e)
+            stats = {'ok':False, 'result':'Error!'}
+
 
         ## Features will give X,Y. We create train & test data from it
-        model.get_data(SPLIT_PERC,STANDARDIZATION,MODEL)
+        #model.get_data(SPLIT_PERC,STANDARDIZATION,MODEL)
 
         ## Once we have model and X_test & Y_test, we can test it
-        stats = metrics.test(metrics_dict)
-
+        #stats = metrics.test(metrics_dict)
+        
+        
         ## Display the ouput
         resultsMsg = QLabel(stats['result'],self)
-        resultsMsg.setGeometry(200,200,900,700)
+        resultsMsg.setGeometry(220,100,900,700)
 
+        if stats['ok']==True:
+            btn_ref_file = QPushButton('LOG RESULTS', self)
+            btn_ref_file.resize(500, 40)
+            btn_ref_file.move(300, 550)
+            btn_ref_file.clicked.connect(self.log_results)
 
+        btn1_ref_file = QPushButton('QUIT', self)
+        btn1_ref_file.resize(500, 40)
+        btn1_ref_file.move(300, 600)
+        btn1_ref_file.clicked.connect(QtWidgets.qApp.quit)
+        
+    def log_results(self):
+        field_names = ['STATION_ID','INTERVAL','MISSING TEMPERATURE FILLED USING',
+               'MISSING PM FILLED USING','MISSING POLLUTANTS FILLED USING','MISSING MET PARAMS FILLED USING',
+               'EXTRA FEATURES ADDED','LAG FOR POLLUTANTS','LAG FOR TARGET','TARGET','STANDARDIZATION','SPLIT_PERC','MODEL',
+               'MSE','MAE','RMSE','MAPE','R2']
+
+        li = []
+        for key, val in features_dict.items():
+                 if val == 1:
+                     li.append(key)
+
+        res = re.findall(r'[0-9]*[.,][0-9]*',result)
+  
+        # Dictionary
+        dict_items={'STATION_ID':STATION_ID,'INTERVAL':INTERVAL,'MISSING TEMPERATURE FILLED USING': list(temp_na_dict.keys())[list(temp_na_dict.values()).index(TEMP_NA)],
+               'MISSING PM FILLED USING': list(pm_na_dict.keys())[list(pm_na_dict.values()).index(PM_NA)],'MISSING POLLUTANTS FILLED USING':list(poll_na_dict.keys())[list(poll_na_dict.values()).index(POLL_NA)],
+               'MISSING MET PARAMS FILLED USING': list(met_na_dict.keys())[list(met_na_dict.values()).index(MET_NA)],
+               'EXTRA FEATURES ADDED':li,'LAG FOR POLLUTANTS':LAG_POLL,'LAG FOR TARGET':LAG_TARGET,'TARGET':list(target_dict.keys())[list(target_dict.values()).index(TARGET)],
+               'STANDARDIZATION':list(standard_dict.keys())[list(standard_dict.values()).index(STANDARDIZATION)],'SPLIT_PERC':SPLIT_PERC,'MODEL':list(model_dict.keys())[list(model_dict.values()).index(MODEL)],
+               'MSE':res[0],'MAE':res[1],'RMSE':res[2],'MAPE':res[3],'R2':res[4]}
+
+        with open('results.csv', 'a') as f_object:
+              
+            # Pass the file object and a list 
+            # of column names to DictWriter()
+            # You will get a object of DictWriter
+            dictwriter_object = DictWriter(f_object, fieldnames=field_names)
+          
+            #Pass the dictionary as an argument to the Writerow()
+            dictwriter_object.writerow(dict_items)
+          
+            #Close the file object
+            f_object.close()
+
+            QtWidgets.qApp.quit()
+
+    # def quit(self):
+
+    #     self.close()
 
 ## Run function for running the app
 ## This initialized the 1st screen. 
