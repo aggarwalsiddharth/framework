@@ -141,4 +141,5 @@ cython_debug/
 .csv
 
 
-
+# DStore
+.DS_Store
