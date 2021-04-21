@@ -8,6 +8,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn import metrics
 import features
+import os
 
 
 # global model, X_test & Y_test for updating in function & sending it to metrics.py
@@ -51,6 +52,7 @@ def standardize_X(X_train, X_test, STANDARDIZATION):
 	return X_train, X_test
 
 def apply_model(MODEL, X_train,X_test,Y_train,Y_test):
+	seed_everything()
 
 	if MODEL ==0:
 		from sklearn.linear_model import LinearRegression
@@ -143,6 +145,13 @@ def timeseries_evaluation_metrics_func(y_true, y_pred):
 
    return stats
 
+
+def seed_everything(seed=42):
+    """"
+    Seed everything.
+    """   
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
 
 ## sending X_test and Y_test and model to metrics.py
 def get_model():

@@ -603,13 +603,18 @@ class Screen6(QWidget):
 
     def polLag(self,text):
         global LAG_POLL
-        
-        LAG_POLL = int(text)
+        try:
+            LAG_POLL = int(text)
+        except:
+            LAG_POLL = 0
     
     def tarLag(self,text):
         global LAG_TARGET
         
-        LAG_TARGET = int(text)
+        try:
+            LAG_TARGET = int(text)
+        except:
+            LAG_TARGET = 0
 
 
     def nextScreen(self):

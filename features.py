@@ -5,7 +5,7 @@
 from time import sleep
 import pandas as pd
 import numpy as np
-
+import os
 import missing_values # for getting the df
 import data_load_proxy # for getting station and interval for file saving
 
@@ -30,11 +30,16 @@ def get_data(STATION_ID, features_dict):
 	daily_means = df.groupby([pd.Grouper(key='From Date', freq='D')]).mean()
 
 	## edit this later based on STATION_ID
-	df_2015 = pd.read_csv('../2015_pm_rk_puram.csv')
+	for file in os.listdir('data/'):
+		if '2015' in file and str(STATION_ID) in file:
+			file_2015 = file
+
+	df_2015 = pd.read_csv('data/' + file_2015)
 	df_2015 = df_2015[15:]
 	df_2015.columns = list(df_2015.iloc[0])
 	df_2015 = df_2015.reset_index(drop=True)
 	df_2015 = df_2015[1:]
+	df_2015 = df_2015[:366]
 	df_2015['From Date'] = pd.to_datetime(df_2015['From Date'])
 
 	df = add_features(df, features_dict)
@@ -589,7 +594,14 @@ def add_features_weekend(df):
 	return df
 
 def add_features_pollutants(df):
-	pass
+	POLLUTANT_PARAMS = ['NO (ug/m3)', 'NO2 (ug/m3)', 'NOx (ppb)', 'NH3 (ug/m3)', 'SO2 (ug/m3)','CO (mg/m3)', 'Ozone (ug/m3)', 'Benzene (ug/m3)', 'Toluene (ug/m3)','Eth-Benzene (ug/m3)', 'O Xylene (ug/m3)', 'CH4 (ug/m3)', 'NMHC (ug/m3)', 'SPM (ug/m3)']
+
+	df_cols = df.columns
+
+	pol_cols = list(df_cols.intersection(POLLUTANT_PARAMS))
+
+	for col in pol_cols:
+		del df[col]
 
 
 	return df
@@ -627,6 +639,7 @@ def final_features(df,features_dict,LAG_POLL,TARGET,LAG_TARGET):
 	if LAG_TARGET:
 		df = add_target_lag(df,LAG_TARGET, TARGET)
 
+	df = df.replace({'None':np.nan})
 	df = df.dropna()
 
 	global X,Y
