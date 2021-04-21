@@ -664,6 +664,9 @@ def add_poll_lag(df, LAG_POLL):
 	for i in range(1,LAG_POLL+1):
 		df[[pol_col+f' T-{i}' for pol_col in pol_cols]] = df[pol_cols].shift(i)
 
+	for col in pol_cols:
+		del df[col]
+
 	return df
 
 def add_target_lag(df,LAG_TARGET,TARGET):

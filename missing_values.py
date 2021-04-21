@@ -180,7 +180,7 @@ def Temp_0(df):
 	## Wunderground data load (It is same for all the stations):
 	## It has no empty values and or Duplicates etc
 	
-	wdf = pd.read_csv('../wunderground_temp_final.csv')
+	wdf = pd.read_csv('data/wunderground_temp_final.csv')
 	wdf['From Date'] = pd.to_datetime(wdf['From Date'])
 
 	## These both are important for the JOIN:
@@ -752,7 +752,7 @@ def Poll_2(df):
 def Met_0(df):
 	## Wunderground data load (It is same for all the stations):
 	## It has no empty values and or Duplicates etc
-	wdf = pd.read_csv('../wunderground_temp_final.csv')
+	wdf = pd.read_csv('data/wunderground_temp_final.csv')
 
 
 	wdf['From Date'] = pd.to_datetime(wdf['From Date'])
