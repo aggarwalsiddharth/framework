@@ -9,6 +9,8 @@ import os
 import missing_values # for getting the df
 import data_load_proxy # for getting station and interval for file saving
 
+from sklearn.preprocessing import OneHotEncoder #OHE fit and transform functions at the end
+
 # global X & Y for updating in function & sending it to model.py
 X = []
 Y = []
@@ -584,12 +586,25 @@ def add_features_last_month(df,pm_value):
 	return df
 
 def add_features_seasons(df):
-	pass
+	#Months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+	seasons = ["Winter", "Winter", "Summer", "Summer", "Summer", "Monsoon", "Monsoon", "Monsoon", "Monsoon", "Post-monsoon", "Post-monsoon", "Winter"]
+	month_to_season = dict(zip(range(1,13), seasons))
+	df["Season"] = df["From Date"].dt.month.map(month_to_season)
+
+	# OHE fit
+	categories = ["Season"]
+	OHE = df_OHE_fit(df,categories)
+	
+	# OHE Transform
+	df = df_OHE_transform(df, categories, OHE)
 
 	return df
 
 def add_features_weekend(df):
-	pass
+	df['WEEKDAY'] = pd.to_datetime(df['From Date']).dt.dayofweek  # monday = 0, sunday = 6
+	df['weekend_ind'] = 0          # Initialize the column with default value of 0
+	df.loc[df['WEEKDAY'].isin([5, 6]), 'weekend_ind'] = 1  # 5 and 6 correspond to Sat and Sun
+	del df['WEEKDAY']
 
 	return df
 
@@ -640,6 +655,10 @@ def final_features(df,features_dict,LAG_POLL,TARGET,LAG_TARGET):
 		df = add_target_lag(df,LAG_TARGET, TARGET)
 
 	df = df.replace({'None':np.nan})
+	
+	#columns_drop = ["Xylene (ug/m3)"] #"PM2.5 (ug/m3)"
+	#df = df.drop(columns_drop, axis=1)
+	
 	df = df.dropna()
 
 	global X,Y
@@ -679,3 +698,15 @@ def add_target_lag(df,LAG_TARGET,TARGET):
 
 def get_XY():
 	return X,Y
+
+# OneHotEncoder functions
+def df_OHE_fit(df, categories):
+  OHE = OneHotEncoder()
+  OHE.fit(df[categories])
+  return OHE
+ 
+def df_OHE_transform(df, categories, OHE):
+  transformed = OHE.transform(df[categories]).todense()
+  ohe_df = pd.DataFrame(transformed,columns=OHE.get_feature_names())
+  df_transformed = pd.concat([df.drop(categories, axis=1), ohe_df] ,axis=1)
+  return df_transformed
